@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html>
+
+<meta charset="utf-8">
+<head>
+
+
+<style>
+
+  body{
+
+  }
+
+  .container{ /* center svg */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+  }
+
+</style>
+</head>
+<body>
+
+<div class="container">
+  <svg width="960" height="500"></svg>
+</div>
+
+<script src="https://d3js.org/d3.v3.min.js"></script>
+<script>
+
+d3.selection.prototype.moveToBack = function() {
+    return this.each(function() {
+        var firstChild = this.parentNode.firstChild;
+        if (firstChild) {
+            this.parentNode.insertBefore(this, firstChild);
+        }
+    });
+};
+
+var width = 400;
+var height = 400;
+
+var x = d3.scale.linear()
+  .domain([0, 400])
+  .range([0, width]);
+
+var y = d3.scale.linear()
+  .domain([0, 400])
+  .range([0, height]);
+
+var svg = d3.select("svg")
+  .attr("width", width)
+  .attr("height", height)
+  .style("border-radius", "4px");
+
+var bkg = svg.append("rect")
+  .attr("x", 0)
+  .attr("y", 0)
+  .attr("width", width)
+  .attr("height", height)
+  .style("fill", "#222");
+
+class Node {
+  constructor(id, x, y, obj) {
+    this.id = id; // unique
+    this.x = x; // row
+    this.y = y; // col
+    this.obj = obj; // svg graphic
+    this.visited = false;
+    this.edges = {}; // dictionary ex. ["low_id-high_id"] -> edge
+  }
+  addEdge( edge ){
+    this.edges[edge.key] = edge;
+  }
+  hasEdge( other ){  // undefined or an Edge
+    var key = Math.min(this.id, other.id).toString() + "-" + Math.max(this.id, other.id).toString();
+    return this.edges[key];  // undefined or an Edge
+  }
+}
+
+class Edge {
+  constructor(key, one, two, obj){
+    this.key = key; // low_id-high_id
+    this.one = one; // Node
+    this.two = two; // Node
+    this.obj = obj; // svg graphic
+  }
+}
+
+cs = []; // lookup array for Nodes
+id = 0; // unique id, increments by one on instance creation
+for(var i=0; i<9; i++){ cs.push([]); }
+
+for(var i=1; i<10; i++){
+  for(var j=1; j<10; j++){
+
+    var offset;
+    if(j % 2 == 0){
+      offset = 40*i + 20;
+    }else{
+      offset = 40*i;
+    }
+
+    var tobj = svg.append("circle")
+      .attr("cx", offset - 10)
+      .attr("cy", 40*j)
+      .attr("r", 6)
+      .style("fill", "orange");
+
+    var tnode = new Node(id, i, j, tobj ); // id, x, y, rx, ry, obj
+    id += 1
+
+    cs[i-1].push(tnode);
+
+  }
+}
+
+function attemptEdge(one, two){
+
+  var key = Math.min(one.id, two.id).toString() + "-" + Math.max(one.id, two.id).toString();
+
+  var edge_one_two = one.hasEdge(two);
+  var edge_two_one = two.hasEdge(one);
+
+  if( edge_one_two != undefined && edge_one_two == undefined ){ // one edge, add another
+    two.addEdge( edge_one_two );
+
+  }else if(edge_two_one != undefined && edge_one_two == undefined){ // one edge, add another
+    one.addEdge( edge_two_one );
+
+  }else if(edge_two_one != undefined && edge_one_two != undefined){ // both are defined
+    // do nothing
+
+  }else{ // create a new edge
+    var tedge = svg.append("line")
+      .style("stroke", "lightblue")
+      .attr("x1", one.obj.attr("cx"))
+      .attr("y1", one.obj.attr("cy"))
+      .attr("x2", two.obj.attr("cx"))
+      .attr("y2", two.obj.attr("cy"));
+
+    tedge.moveToBack();
+
+    var newEdge = new Edge(key, one, two, tedge);
+    one.addEdge( newEdge );
+    two.addEdge( newEdge );
+
+  }
+}
+
+//
+// Create edges, avoid duplicates
+//
+for(var i=1; i < 9 - 1; i++){
+  for(var j=1; j < 9 - 1; j++){
+
+    attemptEdge(cs[i][j], cs[i][j-1]); // up
+    attemptEdge(cs[i][j], cs[i][j+1]); // down
+
+    attemptEdge(cs[i][j], cs[i+1][j]); // left
+    attemptEdge(cs[i][j], cs[i-1][j]); // right
+
+    if( j % 2 != 0 ){
+      attemptEdge(cs[i][j], cs[i+1][j+1]);
+      attemptEdge(cs[i][j], cs[i+1][j-1]);
+    }
+
+  }
+}
+
+//
+// Connect the edge nodes
+//
+for(var i=0; i < 8; i++){ // top row
+  attemptEdge(cs[i][0], cs[i+1][0]);
+  attemptEdge(cs[i][0], cs[i][1]);
+}
+
+for(var i=0; i < 8; i++){ // bottom row
+  attemptEdge(cs[i][8], cs[i+1][8]);
+  attemptEdge(cs[i][8], cs[i][7]);
+}
+
+for(var j=1; j<9 - 1; j++){ // left side
+
+  if(j % 2 != 0){
+    attemptEdge(cs[0][j], cs[1][j-1]);
+    attemptEdge(cs[0][j], cs[1][j+1]);
+  }
+
+  attemptEdge(cs[0][j], cs[0][j-1]);
+  attemptEdge(cs[0][j], cs[0][j+1]);
+
+}
+
+for(var j=1; j<9 - 1; j++){ // right side
+
+  if(j % 2 == 0){
+    attemptEdge(cs[8][j], cs[7][j-1]);
+    attemptEdge(cs[8][j], cs[7][j+1]);
+  }
+
+  attemptEdge(cs[8][j], cs[8][j-1]);
+  attemptEdge(cs[8][j], cs[8][j+1]);
+
+}
+
+//
+// background should be bottom layer
+//
+bkg.moveToBack();
+
+
+//
+// hide all edges
+//
+svg.selectAll("line").style("opacity", "0.1");
+
+
+function ping( node ){
+
+  node.visited = true;
+  var next = [];
+
+  // pulse direct edges
+  for(var i in node.edges){
+    var e = node.edges[i];
+    var other = (node.id == e.one.id)? e.two : e.one;
+    if( !other.visited ){
+      next.push( other );
+
+      e.obj.transition()
+      .duration(200)
+      .ease("quad")
+      .style("opacity", 1)
+      .transition()
+      .duration(200)
+      .ease("quad")
+      .style("opacity", 0.1)
+    }
+
+  } // pulse edges ends
+
+  setTimeout(function(){
+    next.forEach((v) => ping(v));
+  }, 150);
+
+} // ping ends
+
+function rand(){
+  return Math.floor(Math.random() * 8 + 1);
+}
+
+var fire = function(){
+  cs.forEach(function(cs2){
+    cs2.forEach(function(n){ n.visited = false });
+  });
+  var random_node = cs[rand()][rand()]
+  ping(random_node);
+
+  setTimeout(fire, 4000);
+};
+fire();
+  
+
+
+
+
+
+</script>
+</body>
+</html>
