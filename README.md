@@ -4,8 +4,8 @@ A simulation of a wave across a networked graph. Built with D3!
 
 # Live Demo
 
-[View Live Demo](https://regularmemory.blog/EnergyWave/)
+[View Live Demo](https://strawstack.github.io/EnergyWave/)
 
 # GIF Demo
 
-[![](./demo.gif)](https://regularmemory.blog/EnergyWave/)
+[![](./demo.gif)](https://strawstack.github.io/EnergyWave/)
